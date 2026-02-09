@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, HTTPException
 
 from app.config import settings
@@ -5,14 +7,18 @@ from app.services.email_sender import send_email as smtp_send_email
 from app.services.store import get_item, mark_sent
 
 
+logger = logging.getLogger("app.notify")
 router = APIRouter(prefix="/notify")
 
 
 @router.post("/{invoice_id}/sms")
 def send_sms(invoice_id: str):
+    logger.info("SMS requested for invoice %s", invoice_id)
     item = mark_sent(invoice_id, "sms")
     if not item:
+        logger.warning("SMS invoice not found: %s", invoice_id)
         raise HTTPException(status_code=404, detail="Invoice not found")
+    logger.info("SMS marked sent for invoice %s", invoice_id)
     return {"status": "sent", "item": item}
 
 
@@ -21,8 +27,11 @@ def send_email(invoice_id: str):
     if not settings.smtp_to_email:
         raise HTTPException(status_code=400, detail="SMTP_TO_EMAIL not configured")
 
+    logger.info("Email requested for invoice %s", invoice_id)
+
     item = get_item(invoice_id)
     if not item:
+        logger.warning("Email invoice not found: %s", invoice_id)
         raise HTTPException(status_code=404, detail="Invoice not found")
 
     subject = f"Invoice Payment Overdue: {invoice_id}"
@@ -56,14 +65,25 @@ def send_email(invoice_id: str):
       </div>
     </div>
     """
-    smtp_send_email(
-        settings.smtp_to_email,
-        subject=subject,
-        body=plain_body,
-        html_body=html_body,
-    )
+    try:
+        smtp_send_email(
+            settings.smtp_to_email,
+            subject=subject,
+            body=plain_body,
+            html_body=html_body,
+        )
+        logger.info(
+            "Email sent to %s for invoice %s",
+            settings.smtp_to_email,
+            invoice_id,
+        )
+    except Exception as exc:
+        logger.exception("Email send failed for invoice %s", invoice_id)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
     item = mark_sent(invoice_id, "email")
     if not item:
+        logger.warning("Email invoice not found after send: %s", invoice_id)
         raise HTTPException(status_code=404, detail="Invoice not found")
     return {"status": "sent", "item": item}
 
@@ -81,4 +101,5 @@ def set_auto(state: str):
     if state not in {"on", "off"}:
         raise HTTPException(status_code=400, detail="Invalid state")
     settings.auto_scan_enabled = state == "on"
+    logger.info("Auto scan set to %s", settings.auto_scan_enabled)
     return {"enabled": settings.auto_scan_enabled}
