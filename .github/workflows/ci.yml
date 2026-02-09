@@ -24,7 +24,7 @@ jobs:
 
       - name: Run unit + API tests
         run: |
-          pytest tests/unit tests/api --cov=app --cov-report=xml --cov-report=term-missing
+          pytest tests/unit tests/api --cov-report=xml --alluredir=allure-results
 
       - name: Upload Allure results
         if: always()

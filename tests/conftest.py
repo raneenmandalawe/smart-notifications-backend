@@ -15,6 +15,8 @@ def isolated_store(tmp_path, monkeypatch):
     monkeypatch.setattr(store_module, "_STATE_PATH", str(state_path))
     monkeypatch.setattr(store_module, "_LAST_SCAN", [])
 
+    return store_module
+
 
 @pytest.fixture()
 def client():
@@ -25,12 +27,10 @@ def client():
 
 @pytest.fixture()
 def fixed_now(monkeypatch):
-    from app.services import time_utils
+    from app.services import store
 
     fixed = datetime(2026, 2, 9, 12, 0, 0)
-    monkeypatch.setattr(time_utils, "utcnow", lambda: fixed)
+    monkeypatch.setattr(store, "utcnow", lambda: fixed)
     return fixed
-
-    yield store_module
 
     monkeypatch.setattr(store_module, "_LAST_SCAN", [])
