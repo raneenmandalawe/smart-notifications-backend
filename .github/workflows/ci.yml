@@ -23,6 +23,8 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run unit + API tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: |
           pytest tests/unit tests/api --cov-report=xml --alluredir=allure-results
 
