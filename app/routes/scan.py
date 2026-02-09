@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from app.services.scan_service import run_scan
+from app.controllers.scan_controller import scan_overdue
 
 
 router = APIRouter()
@@ -8,7 +8,7 @@ router = APIRouter()
 @router.post("/scan")
 def scan():
     try:
-        decisions = run_scan()
+        decisions = scan_overdue()
     except Exception as exc:
         raise HTTPException(status_code=503, detail="ERPNext service unavailable") from exc
 

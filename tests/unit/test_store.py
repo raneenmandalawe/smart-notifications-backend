@@ -21,7 +21,7 @@ def test_store_set_and_get_item(isolated_store):
     assert isolated_store.get_item("INV-404") is None
 
 
-def test_store_mark_sent_updates_channels(isolated_store):
+def test_store_mark_sent_updates_channels(isolated_store, fixed_now):
     isolated_store.set_last_scan(
         [
             {
@@ -42,4 +42,4 @@ def test_store_mark_sent_updates_channels(isolated_store):
     assert updated is not None
     assert updated["status"] == "sent"
     assert "email" in updated["channels"]
-    assert updated.get("last_email_at")
+    assert updated.get("last_email_at") == fixed_now.isoformat()

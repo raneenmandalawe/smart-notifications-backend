@@ -1,0 +1,37 @@
+name: Backend Integration Tests
+
+on:
+  workflow_dispatch:
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    env:
+      ERPNEXT_BASE_URL: ${{ secrets.ERPNEXT_BASE_URL }}
+      ERPNEXT_API_KEY: ${{ secrets.ERPNEXT_API_KEY }}
+      ERPNEXT_API_SECRET: ${{ secrets.ERPNEXT_API_SECRET }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run integration tests
+        run: |
+          pytest tests/integration -v
+
+      - name: Upload Allure results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results
+          path: allure-results
