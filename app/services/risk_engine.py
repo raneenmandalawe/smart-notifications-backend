@@ -1,16 +1,24 @@
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from app.config import settings
+from app.services.time_utils import utcnow
 
 
-def parse_date(date_str: str) -> datetime:
-    return datetime.strptime(date_str, "%Y-%m-%d")
+def parse_date(date_str: Optional[str]) -> Optional[datetime]:
+    if not date_str:
+        return None
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d")
+    except ValueError:
+        return None
 
 
-def compute_days_overdue(due_date: str) -> int:
+def compute_days_overdue(due_date: Optional[str]) -> int:
     due = parse_date(due_date)
-    return max((datetime.utcnow() - due).days, 0)
+    if not due:
+        return 0
+    return max((utcnow() - due).days, 0)
 
 
 def decide_channels(days_overdue: int, amount: float, history_count: int) -> List[str]:

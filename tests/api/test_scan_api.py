@@ -1,9 +1,8 @@
-from fastapi.testclient import TestClient
+from tests.assertions.api_assertions import assert_json_has_keys, assert_status
+from tests.assertions.decision_assertions import assert_decision_schema
 
-from app.main import app
 
-
-def test_scan_endpoint_returns_items(monkeypatch):
+def test_scan_endpoint_returns_items(monkeypatch, client):
     def fake_run_scan():
         return [
             {
@@ -18,25 +17,23 @@ def test_scan_endpoint_returns_items(monkeypatch):
             }
         ]
 
-    monkeypatch.setattr("app.routes.scan.run_scan", fake_run_scan)
+    monkeypatch.setattr("app.routes.scan.scan_overdue", fake_run_scan)
 
-    client = TestClient(app)
     response = client.post("/scan")
-
-    assert response.status_code == 200
+    assert_status(response, 200)
     payload = response.json()
+    assert_json_has_keys(payload, ["count", "items"])
     assert payload["count"] == 1
+    assert_decision_schema(payload["items"][0])
     assert payload["items"][0]["invoice_id"] == "INV-200"
 
 
-def test_scan_endpoint_handles_errors(monkeypatch):
+def test_scan_endpoint_handles_errors(monkeypatch, client):
     def raise_error():
         raise RuntimeError("ERPNext unavailable")
 
-    monkeypatch.setattr("app.routes.scan.run_scan", raise_error)
+    monkeypatch.setattr("app.routes.scan.scan_overdue", raise_error)
 
-    client = TestClient(app)
     response = client.post("/scan")
-
-    assert response.status_code == 503
+    assert_status(response, 503)
     assert response.json()["detail"] == "ERPNext service unavailable"

@@ -1,9 +1,7 @@
-from fastapi.testclient import TestClient
-
-from app.main import app
+from tests.assertions.api_assertions import assert_json_has_keys, assert_status
 
 
-def test_dashboard_endpoints_return_data(isolated_store):
+def test_dashboard_endpoints_return_data(isolated_store, client, fixed_now):
     sample_items = [
         {
             "invoice_id": "INV-001",
@@ -14,8 +12,8 @@ def test_dashboard_endpoints_return_data(isolated_store):
             "risk_level": "MEDIUM",
             "channels": ["email"],
             "status": "sent",
-            "last_notified_at": "2026-02-08T10:00:00",
-            "last_email_at": "2026-02-08T10:00:00",
+            "last_notified_at": fixed_now.isoformat(),
+            "last_email_at": fixed_now.isoformat(),
         },
         {
             "invoice_id": "INV-002",
@@ -29,18 +27,17 @@ def test_dashboard_endpoints_return_data(isolated_store):
         },
     ]
     isolated_store.set_last_scan(sample_items)
-
-    client = TestClient(app)
-
     overdue_response = client.get("/dashboard/overdue")
-    assert overdue_response.status_code == 200
+    assert_status(overdue_response, 200)
     assert overdue_response.json()["items"] == sample_items
 
     stats_response = client.get("/dashboard/stats")
-    assert stats_response.status_code == 200
-    assert stats_response.json() == {
+    assert_status(stats_response, 200)
+    payload = stats_response.json()
+    assert_json_has_keys(payload, ["total", "high_risk", "sent_today", "failed"])
+    assert payload == {
         "total": 2,
         "high_risk": 0,
-        "sent_today": 2,
+        "sent_today": 1,
         "failed": 0,
     }

@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.services.store import get_last_scan
+from app.controllers.dashboard_controller import get_overdue_items, get_dashboard_stats
 
 
 router = APIRouter(prefix="/dashboard")
@@ -7,17 +7,9 @@ router = APIRouter(prefix="/dashboard")
 
 @router.get("/overdue")
 def overdue():
-    return {"items": get_last_scan()}
+    return {"items": get_overdue_items()}
 
 
 @router.get("/stats")
 def stats():
-    items = get_last_scan()
-    high = [i for i in items if i["risk_level"] == "HIGH"]
-    failed = [i for i in items if i["status"] == "failed"]
-    return {
-        "total": len(items),
-        "high_risk": len(high),
-        "sent_today": len(items),
-        "failed": len(failed),
-    }
+    return get_dashboard_stats()

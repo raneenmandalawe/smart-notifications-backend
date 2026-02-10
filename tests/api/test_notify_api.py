@@ -1,9 +1,7 @@
-from fastapi.testclient import TestClient
-
-from app.main import app
+from tests.assertions.api_assertions import assert_status
 
 
-def test_notify_sms_marks_invoice_sent(isolated_store):
+def test_notify_sms_marks_invoice_sent(isolated_store, client, fixed_now):
     isolated_store.set_last_scan(
         [
             {
@@ -19,33 +17,26 @@ def test_notify_sms_marks_invoice_sent(isolated_store):
         ]
     )
 
-    client = TestClient(app)
     response = client.post("/notify/INV-100/sms")
-
-    assert response.status_code == 200
+    assert_status(response, 200)
     payload = response.json()
     assert payload["status"] == "sent"
     assert "sms" in payload["item"]["channels"]
     assert payload["item"]["status"] == "sent"
-    assert payload["item"].get("last_sms_at")
+    assert payload["item"].get("last_sms_at") == fixed_now.isoformat()
 
 
-def test_notify_sms_missing_invoice_returns_404(isolated_store):
+def test_notify_sms_missing_invoice_returns_404(isolated_store, client):
     isolated_store.set_last_scan([])
-
-    client = TestClient(app)
     response = client.post("/notify/INV-404/sms")
+    assert_status(response, 404)
 
-    assert response.status_code == 404
 
-
-def test_auto_toggle_on_off():
-    client = TestClient(app)
-
+def test_auto_toggle_on_off(client):
     enabled = client.post("/notify/auto/on")
-    assert enabled.status_code == 200
+    assert_status(enabled, 200)
     assert enabled.json()["enabled"] is True
 
     disabled = client.post("/notify/auto/off")
-    assert disabled.status_code == 200
+    assert_status(disabled, 200)
     assert disabled.json()["enabled"] is False

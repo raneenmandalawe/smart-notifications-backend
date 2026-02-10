@@ -1,7 +1,7 @@
 import json
 import os
-from datetime import datetime
 
+from app.services.time_utils import utcnow
 
 _STATE_DIR = os.path.join(os.path.dirname(__file__), "..", "..", ".data")
 _STATE_PATH = os.path.join(_STATE_DIR, "last_scan.json")
@@ -44,7 +44,7 @@ def get_item(invoice_id: str):
 
 
 def mark_sent(invoice_id: str, channel: str):
-    now = datetime.utcnow().isoformat()
+    now = utcnow().isoformat()
     for item in _LAST_SCAN:
         if item["invoice_id"] == invoice_id:
             if channel not in item["channels"]:
