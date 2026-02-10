@@ -1,5 +1,8 @@
 # Smart Notifications Backend
 
+[![CI](https://github.com/raneenmandalawe/smart-notifications-backend/actions/workflows/ci.yml/badge.svg)](https://github.com/raneenmandalawe/smart-notifications-backend/actions/workflows/ci.yml)
+[![Test Report](https://img.shields.io/badge/Test_Report-Allure-yellow)](https://raneenmandalawe.github.io/smart-notifications-backend)
+
 FastAPI service that scans ERPNext overdue Sales Invoices, computes risk, selects channels (Email/SMS), and exposes dashboard endpoints.
 
 ## Requirements
