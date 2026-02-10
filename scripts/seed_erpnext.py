@@ -107,6 +107,115 @@ def _ensure_item(session: requests.Session) -> str:
     return created["name"]
 
 
+def _safe_get_global_defaults(session: requests.Session) -> Dict[str, Any]:
+    try:
+        defaults = _get_list(
+            session,
+            "Global Defaults",
+            fields=[
+                "default_company",
+                "default_currency",
+                "default_selling_price_list",
+                "default_price_list",
+                "default_payment_terms_template",
+            ],
+        )
+    except requests.HTTPError:
+        return {}
+
+    return defaults[0] if defaults else {}
+
+
+def _first_name(session: requests.Session, doctype: str, filters=None) -> str:
+    try:
+        items = _get_list(session, doctype, filters=filters, fields=["name"])
+    except requests.HTTPError:
+        return ""
+
+    if not items:
+        return ""
+    return items[0]["name"]
+
+
+def _ensure_payment_term(session: requests.Session) -> str:
+    name = _first_name(session, "Payment Term")
+    if name:
+        return name
+
+    payload = {
+        "payment_term_name": "Net 0",
+        "due_date_based_on": "Day(s) after invoice date",
+        "credit_days": 0,
+        "invoice_portion": 100,
+        "description": "Immediate payment",
+    }
+    created = _create_doc(session, "Payment Term", payload)
+    return created["name"]
+
+
+def _ensure_payment_terms_template(session: requests.Session) -> str:
+    name = _first_name(session, "Payment Terms Template")
+    if name:
+        return name
+
+    term_name = _ensure_payment_term(session)
+    payload = {
+        "template_name": "Net 0",
+        "terms": [
+            {
+                "payment_term": term_name,
+                "invoice_portion": 100,
+                "due_date_based_on": "Day(s) after invoice date",
+                "credit_days": 0,
+            }
+        ],
+    }
+    created = _create_doc(session, "Payment Terms Template", payload)
+    return created["name"]
+
+
+def _resolve_defaults(session: requests.Session) -> Dict[str, str]:
+    defaults = _safe_get_global_defaults(session)
+
+    company = (
+        defaults.get("default_company")
+        or _get_env("ERPNEXT_DEFAULT_COMPANY")
+        or _first_name(session, "Company")
+    )
+
+    currency = defaults.get("default_currency") or _get_env("ERPNEXT_DEFAULT_CURRENCY")
+    if not currency and company:
+        try:
+            company_doc = _get_doc(session, "Company", company)
+            currency = company_doc.get("default_currency", "") if company_doc else ""
+        except requests.HTTPError:
+            currency = ""
+
+    selling_price_list = (
+        defaults.get("default_selling_price_list")
+        or defaults.get("default_price_list")
+        or _get_env("ERPNEXT_DEFAULT_SELLING_PRICE_LIST")
+    )
+    if not selling_price_list:
+        selling_price_list = _first_name(session, "Price List", filters=[["Price List", "selling", "=", 1]])
+    if not selling_price_list:
+        selling_price_list = _first_name(session, "Price List")
+
+    payment_terms_template = (
+        defaults.get("default_payment_terms_template")
+        or _get_env("ERPNEXT_DEFAULT_PAYMENT_TERMS_TEMPLATE")
+        or _first_name(session, "Payment Terms Template")
+        or _ensure_payment_terms_template(session)
+    )
+
+    return {
+        "company": company,
+        "currency": currency,
+        "selling_price_list": selling_price_list,
+        "payment_terms_template": payment_terms_template,
+    }
+
+
 def _ensure_invoice(
     session: requests.Session,
     customer_name: str,
@@ -114,6 +223,7 @@ def _ensure_invoice(
     tag: str,
     due_date: date,
     amount: float,
+    defaults: Dict[str, str],
 ) -> str:
     existing = _get_list(
         session,
@@ -128,6 +238,8 @@ def _ensure_invoice(
     payload = {
         "customer": customer_name,
         "posting_date": posting_date.isoformat(),
+        "posting_time": "00:00:00",
+        "set_posting_time": 1,
         "due_date": due_date.isoformat(),
         "remarks": tag,
         "items": [
@@ -138,6 +250,14 @@ def _ensure_invoice(
             }
         ],
     }
+    if defaults.get("company"):
+        payload["company"] = defaults["company"]
+    if defaults.get("currency"):
+        payload["currency"] = defaults["currency"]
+    if defaults.get("selling_price_list"):
+        payload["selling_price_list"] = defaults["selling_price_list"]
+    if defaults.get("payment_terms_template"):
+        payload["payment_terms_template"] = defaults["payment_terms_template"]
     created = _create_doc(session, "Sales Invoice", payload)
     name = created["name"]
 
@@ -155,6 +275,7 @@ def seed_erpnext() -> Dict[str, Any]:
 
     customer_name = _ensure_customer(session)
     item_code = _ensure_item(session)
+    defaults = _resolve_defaults(session)
 
     dates = seed_dates()
     history_1 = _ensure_invoice(
@@ -164,6 +285,7 @@ def seed_erpnext() -> Dict[str, Any]:
         SEED_TAGS["history_1"],
         dates["history_1"],
         SEED_AMOUNTS["history_1"],
+        defaults,
     )
     history_2 = _ensure_invoice(
         session,
@@ -172,6 +294,7 @@ def seed_erpnext() -> Dict[str, Any]:
         SEED_TAGS["history_2"],
         dates["history_2"],
         SEED_AMOUNTS["history_2"],
+        defaults,
     )
     main = _ensure_invoice(
         session,
@@ -180,6 +303,7 @@ def seed_erpnext() -> Dict[str, Any]:
         SEED_TAGS["main"],
         dates["main"],
         SEED_AMOUNTS["main"],
+        defaults,
     )
 
     return {

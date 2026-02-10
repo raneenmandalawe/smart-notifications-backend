@@ -5,5 +5,8 @@ pydantic
 python-dotenv
 pytest
 pytest-cov
+pytest-html
 httpx
 allure-pytest
+playwright
+pytest-playwright
