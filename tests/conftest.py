@@ -27,8 +27,16 @@ def client():
 
 @pytest.fixture()
 def fixed_now(monkeypatch):
-    from app.services import time_utils
-
     fixed = datetime(2026, 2, 9, 12, 0, 0)
+    
+    # Monkeypatch all modules that import utcnow
+    from app.services import time_utils, store, scan_service, risk_engine
+    from app.controllers import dashboard_controller
+    
     monkeypatch.setattr(time_utils, "utcnow", lambda: fixed)
+    monkeypatch.setattr(store, "utcnow", lambda: fixed)
+    monkeypatch.setattr(scan_service, "utcnow", lambda: fixed)
+    monkeypatch.setattr(risk_engine, "utcnow", lambda: fixed)
+    monkeypatch.setattr(dashboard_controller, "utcnow", lambda: fixed)
+    
     return fixed
