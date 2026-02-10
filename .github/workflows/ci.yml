@@ -5,6 +5,13 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+  pull-requests: write
+  checks: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -26,7 +33,24 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}
         run: |
-          pytest tests/unit tests/api --cov-report=xml --alluredir=allure-results
+          pytest tests/unit tests/api --cov-report=xml
+
+      - name: Create environment properties
+        if: always()
+        run: |
+          echo "App.Version=1.0.0" >> allure-results/environment.properties
+          echo "Environment=CI" >> allure-results/environment.properties
+          echo "Python.Version=$(python --version | cut -d' ' -f2)" >> allure-results/environment.properties
+          echo "Test.Execution.Date=$(date +'%Y-%m-%d %H:%M:%S')" >> allure-results/environment.properties
+          echo "Branch=${{ github.head_ref }}" >> allure-results/environment.properties
+          echo "Commit=${{ github.sha }}" >> allure-results/environment.properties
+
+      - name: Run Allure Action
+        uses: allure-framework/allure-action@v0
+        if: always()
+        with:
+          report-directory: "./allure-report"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Allure results
         if: always()
