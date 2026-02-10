@@ -45,6 +45,39 @@ jobs:
           echo "Test.Date=$(date +'%Y-%m-%d %H:%M:%S')" >> allure-results/environment.properties
           echo "Branch=${{ github.ref_name }}" >> allure-results/environment.properties
 
+      # Add executor info for Allure
+      - name: Create executor info
+        if: always()
+        run: |
+          cat > allure-results/executor.json <<EOF
+          {
+            "name": "GitHub Actions",
+            "type": "github",
+            "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+            "buildOrder": ${{ github.run_number }},
+            "buildName": "Run #${{ github.run_number }}",
+            "buildUrl": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+            "reportUrl": "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+          }
+          EOF
+
+      # Add categories for better organization
+      - name: Create categories
+        if: always()
+        run: |
+          cat > allure-results/categories.json <<EOF
+          [
+            {
+              "name": "Product defects",
+              "matchedStatuses": ["failed"]
+            },
+            {
+              "name": "Test defects",
+              "matchedStatuses": ["broken"]
+            }
+          ]
+          EOF
+
       # Install Allure CLI and generate HTML report
       - name: Generate Allure HTML report
         if: always()
@@ -52,6 +85,46 @@ jobs:
           wget -q https://github.com/allure-framework/allure2/releases/download/2.32.0/allure-2.32.0.tgz
           tar -xzf allure-2.32.0.tgz
           ./allure-2.32.0/bin/allure generate allure-results --clean -o allure-report
+
+      # Create test summary for GitHub Actions
+      - name: Create test summary
+        if: always()
+        run: |
+          echo "## 📊 Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Parse allure widgets
+          if [ -f "allure-report/widgets/summary.json" ]; then
+            TOTAL=$(jq -r '.statistic.total' allure-report/widgets/summary.json)
+            PASSED=$(jq -r '.statistic.passed' allure-report/widgets/summary.json)
+            FAILED=$(jq -r '.statistic.failed' allure-report/widgets/summary.json)
+            BROKEN=$(jq -r '.statistic.broken' allure-report/widgets/summary.json)
+            SKIPPED=$(jq -r '.statistic.skipped' allure-report/widgets/summary.json)
+            
+            echo "| Status | Count |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| ✅ Passed | $PASSED |" >> $GITHUB_STEP_SUMMARY
+            echo "| ❌ Failed | $FAILED |" >> $GITHUB_STEP_SUMMARY
+            echo "| 💥 Broken | $BROKEN |" >> $GITHUB_STEP_SUMMARY
+            echo "| ⏭️ Skipped | $SKIPPED |" >> $GITHUB_STEP_SUMMARY
+            echo "| **📈 Total** | **$TOTAL** |" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            # Success rate
+            if [ "$TOTAL" -gt 0 ]; then
+              SUCCESS_RATE=$(echo "scale=2; ($PASSED / $TOTAL) * 100" | bc)
+              echo "**Success Rate:** ${SUCCESS_RATE}% 🎯" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📦 **Download:** [Allure Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts)" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "🌐 **View Online:** [GitHub Pages](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }})" >> $GITHUB_STEP_SUMMARY
+          fi
 
       # Upload test results as artifacts (available for both PRs and main)
       - name: Upload Allure results
