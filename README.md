@@ -31,8 +31,8 @@ FastAPI service that scans ERPNext overdue Sales Invoices, computes risk, select
 - Unit tests for pure logic
 - Integration tests run against real ERPNext data (no mocks)
 - Run tests: `pytest tests/`
-- View test reports: `./scripts/view-allure-report.sh` (requires `brew install allure`)
-- CI automatically publishes reports to [GitHub Pages](https://raneenmandalawe.github.io/smart-notifications-backend)
+- View test reports locally: `allure serve allure-results` (requires [Allure CLI](https://allurereport.org/docs/install/))
+- CI test reports published at: https://raneenmandalawe.github.io/smart-notifications-backend
 
 ## Documentation
 - `docs/ARCHITECTURE.md`
@@ -41,4 +41,3 @@ FastAPI service that scans ERPNext overdue Sales Invoices, computes risk, select
 - `docs/API_TRACEABILITY_MATRIX.md`
 - `docs/CI_PIPELINE.md`
 - `docs/RUNBOOK.md`
-- `docs/ALLURE_REPORTS.md` - Test reporting with graphs and statistics
