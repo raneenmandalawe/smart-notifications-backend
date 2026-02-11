@@ -14,9 +14,9 @@ sns = boto3.client("sns", region_name="us-east-1")
 @router.post("/{invoice_id}/sms")
 def send_sms(invoice_id: str):
     response = sns.publish(
-    TopicArn="arn:aws:sns:us-east-1:228281126655:test",
-        message = f"Reminder: Invoice #{invoice_id} is overdue. Please arrange payment at your earliest convenience. Thank you."
-        Subject="Test Notification" # optional (email only)
+        TopicArn="arn:aws:sns:us-east-1:228281126655:test",
+        Message=f"Reminder: Invoice #{invoice_id} is overdue. Please arrange payment at your earliest convenience. Thank you.",
+        Subject="Test Notification"  # optional (email only)
     )
     result = response.get("MessageId")
 
