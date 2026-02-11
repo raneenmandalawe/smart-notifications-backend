@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-
+import boto3
 from app.controllers.notify_controller import (
     send_email_notification,
     send_sms_notification,
@@ -9,11 +9,17 @@ from app.controllers.notify_controller import (
 
 
 router = APIRouter(prefix="/notify")
-
+sns = boto3.client("sns", region_name="us-east-1")
 
 @router.post("/{invoice_id}/sms")
 def send_sms(invoice_id: str):
-    result = send_sms_notification(invoice_id)
+    response = sns.publish(
+    TopicArn="arn:aws:sns:us-east-1:228281126655:test",
+        message = f"Reminder: Invoice #{invoice_id} is overdue. Please arrange payment at your earliest convenience. Thank you."
+        Subject="Test Notification" # optional (email only)
+    )
+    result = response.get("MessageId")
+
     if not result:
         raise HTTPException(status_code=404, detail="Invoice not found")
     return {"status": "sent", "item": result}
